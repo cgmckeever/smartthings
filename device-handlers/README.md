@@ -1,5 +1,10 @@
 # Device Handler for [Sylvania Smart Home 73743 Lightify Smart Dimming Switch](https://www.amazon.com/gp/product/B0196M620Y/ref=ppx_yo_dt_b_asin_title_o01_s00?ie=UTF8&psc=1)
 
+## Known Issues
+
+- Installation probable doesnt work, but setting it manually does
+- Battery is not refreshing
+
 ## Button Definitions
 
 - Push Button 1 or 2
