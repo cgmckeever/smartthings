@@ -2,8 +2,9 @@
 
 ## Button Definitions
 
-- Push
-- Hold
+- Push Button 1 or 2
+- Hold Button 1 or 2
+- TODO (Probably never): Push both at same time
 
 ## Webcore Integration
 
