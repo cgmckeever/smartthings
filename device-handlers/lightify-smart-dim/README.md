@@ -10,7 +10,8 @@ There are at least 3 device handlers for this, they are [referenced here](https:
 ## Button Definitions
 
 - Push Button 1 or 2
-- Hold Button 1 or 2
+- Double Tap (ie. when lights are on hitting ON/Top): sets to min/max ranges respectively
+- Hold Button 1 or 2: Continual brightness adjustment
 - TODO (Probably never): Push both at same time
 
 ## Webcore Integration

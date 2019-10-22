@@ -269,23 +269,43 @@ private uiToggle() {
 private toggle(int button) {
     state.action = "pushed"
     state.buttonNumber = button
+    def sendLevel = false
+
+    // Double Tapping
+    if (button == 1) {
+        if (state.value == "on") {
+            state.level = 100
+            sendLevel = true
+        } else if (state.level < 20) {
+            state.level = 20
+            sendLevel = true
+        }
+    } else if (button == 2 && state.value == "off") {
+        state.value = "on"
+        state.level = 20
+        sendLevel = true
+    }
+
+    if (sendLevel) {
+        log.info("Level over Toggle")
+        state.level = state.level - 1
+        sendEventLevel()
+        state.level = state.level + 1
+        runIn(1, sendEventLevel)
+        return
+    }
+
 
     if (button == 2) {
         log.info('toggle off')
-        state.value="off"
+        state.value = "off"
     } else {
         log.info('toggle on')
-        state.value="on"
-
-        // level over toggle
-        if (state.level < 20) {
-            log.info("Level over toggle")
-            state.level = 0
-            setLevel(20)
-            return 
-        }
+        state.value = "on"
     }
+
     sendEventButton()
+
 }
 
 
