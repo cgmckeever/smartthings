@@ -1,6 +1,6 @@
 # Device Handler for [Sylvania Smart Home 73743 Lightify Smart Dimming Switch](https://www.amazon.com/gp/product/B0196M620Y/ref=ppx_yo_dt_b_asin_title_o01_s00?ie=UTF8&psc=1)
 
-There are at least 3 device handlers for this, they are [referenced here](https://community.smartthings.com/t/faq-sylvania-battery-power-dimming-switch-model-73743-why-there-are-three-different-dths-to-choose-from/107714). This one attempts created the holdable-dim option whenpaired with a Webcore Piston.
+There are at least 3 device handlers for this, they are [referenced here](https://community.smartthings.com/t/faq-sylvania-battery-power-dimming-switch-model-73743-why-there-are-three-different-dths-to-choose-from/107714). This one attempts to implement the holdable-dim option when paired with a Webcore Piston.
 
 ## Known Issues
 
