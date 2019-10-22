@@ -2,8 +2,7 @@
 
 ## Known Issues
 
-- Installation probable doesnt work, but setting it manually does
-- Battery is not refreshing
+- Installation probably doesnt work, but setting it manually does
 
 ## Button Definitions
 
@@ -14,5 +13,9 @@
 ## Webcore Integration
 
 If you want to set up a dimmable function while a button is held, you can set up a Webcore listener on the **level** _changes_ trigger
+
+### Buttons (defined in handler)
+- Button 1: Top
+- Button 2: Bottom
 
 
