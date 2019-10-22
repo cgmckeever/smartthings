@@ -19,3 +19,4 @@ If you want to set up a dimmable function while a button is held, you can set up
 - Button 2: Bottom
 
 
+![Piston] (https://user-images.githubusercontent.com/513738/67286662-69972000-f49f-11e9-9d0a-c363c5582956.png)
