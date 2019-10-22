@@ -24,18 +24,18 @@
 
 
 /*
-*Button numbers:
-*1=down pressed
-*2=up pressed
-*3=down held
-*4=up held
-*5=release hold
-*6=both buttons held
-*7=down then up pressed 
-*8=up then down pressed
+* Button numbers (arbitrary defined for WebCore):
+* 1=top pressed
+* 2=bottom pressed
+* 3=top held
+* 4=bottom held
+* 5=release hold
+* 6=both buttons held       // not implemented
+* 7=down then up pressed    // not implemented
+* 8=up then down pressed    // not implemented
 */
 
-/**
+/*
 * Command reference 
 * on  'catchall: 0104 0006 01 01 0140 00 3A68 01 00 0000 01 00 '
 * off  'catchall: 0104 0006 01 01 0140 00 3A68 01 00 0000 00 00 '
@@ -45,53 +45,41 @@
 */
 
 
-simulator {
-
-}
-
-/*
-* sets up fingerprint for autojoin
-* sets up commands for polling and others
-* sets up capabilities
-* sets up variables
-*/
 metadata {
- definition(name: "Lightify Dimming Switch - Zigbee/Webcore", namespace: "cgmckeever", author: "cgmckeever") {
-  capability "Battery"
-  capability "Button"
-  capability "Switch Level"
-  command "refresh"
-  command "toggle"
-  fingerprint profileId: "0104", 
-    deviceId: "0001", 
-    inClusters: "0000, 0001, 0003, 0020, 0402, 0B05", 
-    outClusters: "0003, 0006, 0008, 0019", 
-    manufacturer: "OSRAM", 
-    model: "LIGHTIFY Dimming Switch", 
-    deviceJoinName: "OSRAM Lightify Dimming Switch"
- }
+    definition(name: "Lightify Dimming Switch - Zigbee/Webcore", namespace: "cgmckeever", author: "cgmckeever") {
+        capability "Battery"
+        capability "Button"
+        capability "Switch Level"
+        command "refresh"
+        command "uiToggle"
+        fingerprint profileId: "0104", 
+        deviceId: "0001", 
+        inClusters: "0000, 0001, 0003, 0020, 0402, 0B05", 
+        outClusters: "0003, 0006, 0008, 0019", 
+        manufacturer: "OSRAM", 
+        model: "LIGHTIFY Dimming Switch", 
+        deviceJoinName: "OSRAM Lightify Dimming Switch"
+    }
 
+    simulator {}
 
-/*
-* UI 
-*/
-tiles(scale: 2) {
-    main "button"
+    tiles(scale: 2) {
+        main (["button"])
         details(["button", "battery", "refresh"])
+        standardTile("button", "device.state", width: 6, height: 4) {
+            state "off", label: 'Off', action: "uiToggle", icon: "st.Home.home30", backgroundColor: "#ffffff", nextState: "turningOn", decoration: "flat"
+            state "on", label: "On", action: "uiToggle", icon: "st.Home.home30", backgroundColor: "#79b821", nextState: "turningOff", decoration: "flat"
+            state "turningOn", label: 'Turning on', icon: "st.Home.home30", backgroundColor: "#79b821", nextState: "on", decoration: "flat"
+            state "turningOff", label: 'Turning off', icon: "st.Home.home30", backgroundColor: "#ffffff", nextState: "off", decoration: "flat"
+        }
+        valueTile("battery", "device.battery", decoration: "flat", inactiveLabel: false, width: 2, height: 2) {
+            state "battery", label: 'battery ${currentValue}%'
+        }
+        standardTile("refresh", "device.button", decoration: "flat", width: 2, height: 2) {
+            state "default", label: "", action: "refresh", icon: "st.secondary.refresh"
+        }
     }
-    standardTile("button", "device.state", width: 6, height: 4) {
-        state "off", label: 'Off', action: "toggle", icon: "st.Home.home30", backgroundColor: "#ffffff", nextState: "turningOn", decoration: "flat"
-        state "on", label: "On", action: "toggle", icon: "st.Home.home30", backgroundColor: "#79b821", nextState: "turningOff", decoration: "flat"
-        state "turningOn", label: 'Turning on', icon: "st.Home.home30", backgroundColor: "#79b821", nextState: "on", decoration: "flat"
-        state "turningOff", label: 'Turning off', icon: "st.Home.home30", backgroundColor: "#ffffff", nextState: "off", decoration: "flat"
-    }
-    valueTile("battery", "device.battery", decoration: "flat", inactiveLabel: false, width: 2, height: 2) {
-        state "battery", label: 'battery ${currentValue}%'
-    }
-    standardTile("refresh", "device.button", decoration: "flat", width: 2, height: 2) {
-        state "default", label: "", action: "refresh", icon: "st.secondary.refresh"
-    }
-}
+ }
 
 
 /*
@@ -102,70 +90,73 @@ def parse(String msgFromST) {
     if (msgFromST?.startsWith('catchall:')) {
         handleMessage(msgFromST)
     } else if (msgFromST.startsWith("read")) {
-        log.debug('read:' + msgFromST)
-        if (msgFromST.contains("attrId: 0000")) return state
-        // TODO 
-        //if (msgFromST.contains("attrId: 0020,")) return batteryHandler(zigbee.parseDescriptionAsMap(msgFromST))
+        log.debug('read: ' + msgFromST)
+        def descMap = zigbee.parseDescriptionAsMap(msgFromST)
+        if (descMap.clusterInt == 0x0001 && descMap.attrInt == 0x0020 && descMap.value != null) getBatteryResult(zigbee.convertHexToInt(descMap.value))
     } else {
         log.error('unrecognized command:' + msgFromST)
     }
+
+    return getStatus()
 } 
 
 /* 
 * ST Message Handler
 */
-def Map handleMessage(String msgFromST) {
+private handleMessage(String msgFromST) {
     Map msg = zigbee.parseDescriptionAsMap(msgFromST)
     switch (Integer.parseInt(msg.clusterId)) {
         case 6: // button press
             log.info('button press')
             handleButtonPress(msg)
+            reportState()
             break
         case 8: // button held
             log.info('button held')
             handleButtonHeld(msg)
+            reportState()
             break
         case 8021:
             log.info("Networking Bind Response received!!!")
-            state.buttonNumber=null
-            state.boundnetwork=true
+            state.buttonNumber = null
+            state.boundnetwork = true
             break
         case 8034:
             log.info("Network managment Leave Response!!!")
-            state.buttonNumber=null
-            state.boundnetwork=false
+            state.buttonNumber = null
+            state.boundnetwork = false
             break
         default:
             log.error("Unhandled message: " + msg)
             break
     }
-
-    reportState()
 }
 
 
 /**
 * Button Press Handler
 */
-def Map handleButtonPress(Map msg) {
+private handleButtonPress(Map msg) {
+    log.info('state: ' + state.value)
+    state.action = 'pushed'
+
     switch (msg.command) {
-        case "00": // bottom held
-            toggle()
+        case "00": // bottom press
             log.info('button bottom press')
+            if (state.value == "on") toggle()
             break
-        case "01": // top held
-            toggle()
+        case "01": // top press
             log.info('button top press')
+            if (state.value == "off") toggle()
             break
         case "03": // both pressed
             // UNUSED
             log.info('both buttons pressed')
-            state.buttonNumber=6
+            state.buttonNumber = 6
             break
-        case "07": // ??
-            // UNUSED
+        case "07": 
             log.info("Button Press Bind Response!!!")
-            state.buttonNumber=null
+            state.buttonNumber = null
             break 
         default:
             log.error(getLinkText(device) + " got unknown button press command: " + msg.command)
@@ -177,27 +168,28 @@ def Map handleButtonPress(Map msg) {
 /*
 * Button Held Handler
 */
-def Map handleButtonHeld(Map msg) {
-    if (state.level == null) {
-        state.level = 100
-    }
+private handleButtonHeld(Map msg) {
+    if (state.level == null) state.level = 100
+    state.action = 'held'
+
     switch (Integer.parseInt(msg.command)) {
         case 1:
-            state.buttonNumber=3
             log.debug("button bottom held")
+            state.buttonNumber = 4
             state.lastHeld = "down"
             state.dimming = true
             state.brightnessOffset = -20
             executeBrightnessAdjustmentUntilButtonReleased()
             break
         case 3: // released 
-            state.buttonNumber=6
             log.debug("RELEASED")
+            state.buttonNumber = 5
+            state.action = "released"
             state.dimming = false
             return state
             break
         case 5:
-            state.buttonNumber=4
+            state.buttonNumber = 3
             log.debug("button top held")
             state.lastHeld = "up"
             state.dimming = true
@@ -206,11 +198,11 @@ def Map handleButtonHeld(Map msg) {
             break
         case 7:
             log.info("Button Held Bind Response - 7!!!")
-            state.bounddimmer=true
+            state.bounddimmer = true
             break 
         case 8:
             log.info("Button Held Bind Response - 8!!!")
-            state.bounddimmer=true
+            state.bounddimmer = true
             break 
         default:
             log.error("Unhandled button held event: " + msg)
@@ -220,16 +212,15 @@ return msg
 }
 
 void executeBrightnessAdjustmentUntilButtonReleased(){
-    log.debug(state.level)
-    if (state.dimming) {
+    def level = state.level + state.brightnessOffset
+    if (state.dimming && level >= 0 && level <= 100) {
         setLevel(state.brightnessOffset)
         runIn(1, executeBrightnessAdjustmentUntilButtonReleased)
     }
 }
 
-def setLevel(int offset){
-
-    def int level = state.level + offset
+private setLevel(int offset){
+    def level = state.level + offset
     if (level > 100) {
         level = 100
     } else if (level < 0) {
@@ -239,37 +230,52 @@ def setLevel(int offset){
     reportState()
 }
 
+private getBatteryResult(rawValue) {
+    log.debug('Check Battery')
+    def volts = rawValue / 10
+    if (volts > 3.0 || volts == 0 || rawValue == 0xFF) {
+        state.battery = -1
+    } else {
+        def minVolts = 2.1
+        def maxVolts = 3.0
+        def pct = (volts - minVolts) / (maxVolts - minVolts)
+        state.battery = Math.min(100, (int)(pct * 100))
+    }
+}
+
 
 /*
 * returns a map representing important states
 */
 private Map getStatus() {
- return [name: 'button',
-  battery: state.battery,
-  value: state.value,
-  level: state.level,
-  lastAction: state.lastAction,
-  displayed:true,
-  isStateChange: true,
-  data: [buttonNumber: state.buttonNumber],
-  descriptionText: "$device.displayName button $state.buttonNumber was pressed"
+ return [
+    name: 'button',
+    battery: state.battery,
+    value: state.value,
+    level: state.level,
+    lastAction: state.lastAction,
+    displayed: true,
+    isStateChange: true,
+    data: [buttonNumber: state.buttonNumber],
+    descriptionText: "$device.displayName button $state.buttonNumber was pressed"
  ]
 }
 
 
 /**
- * Handles event updates.  All updates go here. 
+ * Handles event updates. 
  */
-def reportState() {
-    sendEvent(name: 'button',          unit:"on/off", type:"state",     value: state.value, data:[buttonNumber: state.buttonNumber])
+private reportState() {
     sendEvent(name: 'state',           unit:'on/off', type:'state',     value: state.value)
     sendEvent(name: 'battery',         unit:"%",      type:"battery",   value: state.battery)
     sendEvent(name: 'level',           unit:"%",      type:"dimmer",    value: state.level)
     sendEvent(name: 'numberOfButtons', unit:"each",   type:"count",     value: 8)
-    return getStatus()
+    sendEvent(name: "button", value: state.action, data: [buttonNumber: state.buttonNumber], displayed: false, isStateChange: true)
+    log.info("Final Level: " + state.level)
+    log.info("Final State: " + state.value)
 }
 
-/**
+/*
 * fire commands into the hub
 */
 private fireCommands(List commands) {
@@ -281,26 +287,30 @@ private fireCommands(List commands) {
     }
 }
 
-/*
-* toggle
-*/
-def toggle() {
+
+private uiToggle() {
+    toggle()
+    reportState()
+}
+
+private toggle() {
+    state.action = "pushed"
     if (state.value == "on") {
-        state.buttonNumber=1
+        state.buttonNumber = 2
         state.value="off"
         log.info('toggle off')
     } else {
-        state.buttonNumber=2
+        state.buttonNumber = 1 
         state.value="on"
         log.info('toggle on')
-   }
-   reportState()
+        if (state.level < 20) state.level = 20
+    }
 }
 
 /*
 * Refresh support. 
 */ 
-def refresh() {
+private refresh() {
     log.debug(device.displayName + " refresh request")
-    fireCommands(zigbee.readAttribute(0x0001, 0x0020) + zigbee.onOffRefresh() + zigbee.levelRefresh() + zigbee.onOffConfig() + zigbee.levelConfig() )
+    fireCommands(zigbee.readAttribute(0x0001, 0x0020) + zigbee.onOffRefresh() + zigbee.levelRefresh() + zigbee.onOffConfig() + zigbee.levelConfig())
 }
