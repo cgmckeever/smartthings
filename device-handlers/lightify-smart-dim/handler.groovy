@@ -99,12 +99,14 @@ def parse(String msgFromST) {
         log.error('unrecognized command:' + msgFromST)
     }
 
+    reportState()
     return getStatus()
 } 
 
 
 private getBatteryResult(rawValue) {
     log.debug('Check Battery')
+
     def volts = rawValue / 10
     if (volts > 3.0 || volts == 0 || rawValue == 0xFF) {
         state.battery = -1
@@ -128,12 +130,10 @@ private handleMessage(String msgFromST) {
         case 6: // button press
             log.info('button press')
             handleButtonPress(msg)
-            reportState()
             break
         case 8: // button held
             log.info('button held')
             handleButtonHeld(msg)
-            reportState()
             break
         case 8021:
             log.info("Networking Bind Response received!!!")
@@ -189,13 +189,13 @@ private handleButtonPress(Map msg) {
 private handleButtonHeld(Map msg) {
     if (state.level == null) state.level = 100
     state.action = 'held'
+    state.executed = 0
     
     switch (Integer.parseInt(msg.command)) {
         case 1:
             log.debug("button bottom held")
             
             state.buttonNumber = 4
-            sendEventButton()
 
             state.lastHeld = "down"
             state.dimming = true
@@ -207,13 +207,11 @@ private handleButtonHeld(Map msg) {
 
             state.action = "released"
             state.buttonNumber = 5
-            sendEventButton()
             break
         case 5:
             log.debug("button top held")
             
             state.buttonNumber = 3
-            sendEventButton()
 
             state.lastHeld = "up"
             state.dimming = true
@@ -235,12 +233,15 @@ private handleButtonHeld(Map msg) {
 
 void executeBrightnessAdjustmentUntilButtonReleased(){
     def level = state.level + state.brightnessOffset
+    state.executed = state.executed + 1
     if (state.dimming) {
-        setLevel(state.brightnessOffset)
-        if (level > 0 && level < 100) {
+        if (level >= 0 && level <= 100){
+            setLevel(state.brightnessOffset)
             runIn(1, executeBrightnessAdjustmentUntilButtonReleased)
+        } else if (state.executed == 1) {
+            setLevel(state.brightnessOffset)
         }
-    } 
+    }
 }
 
 private setLevel(int offset){
@@ -251,20 +252,18 @@ private setLevel(int offset){
     if (level > 100) {
         level = 100
     } else if (level <= 0) {
-        // toggle over level
         level = 0
-        toggle(2)
     }
 
     state.level = level
-    if (level > 0) reportState()
+    sendEventLevel()
+    
 }
 
 
 private uiToggle() {
     def button = (state.value == "on") ? 2 : 1
     toggle(button)
-    reportState()
 }
 
 private toggle(int button) {
@@ -280,6 +279,7 @@ private toggle(int button) {
 
         // level over toggle
         if (state.level < 20) {
+            log.info("Level over toggle")
             state.level = 0
             setLevel(20)
             return 
@@ -315,7 +315,6 @@ private Map getStatus() {
 private reportState() {
     sendEvent(name: 'state',           unit:'on/off', type:'state',     value: state.value)
     sendEvent(name: 'battery',         unit:"%",      type:"battery",   value: state.battery)
-    sendEvent(name: 'level',           unit:"%",      type:"dimmer",    value: state.level,     isStateChange: true)
     sendEvent(name: 'numberOfButtons', unit:"each",   type:"count",     value: 8)
     log.info("Final Level: " + state.level)
     log.info("Final State: " + state.value)
@@ -323,9 +322,14 @@ private reportState() {
 
 private sendEventButton() {
     if (state.buttonNumber) {
-        log.info("Button: " + state.action + " Event Fired")
+        log.info("Button: " + state.buttonNumber + " " + state.action + " Event Fired")
         sendEvent(name: "button", value: state.action, data: [buttonNumber: state.buttonNumber], displayed: false, isStateChange: true)
     }
+}
+
+private sendEventLevel() {
+    log.info("Level: " + state.level + " Event Fired")
+    sendEvent(name: 'level',           unit:"%",      type:"dimmer",    value: state.level, isStateChange: true)
 }
 
 /*
