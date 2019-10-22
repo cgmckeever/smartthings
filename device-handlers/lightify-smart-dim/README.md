@@ -5,6 +5,7 @@ There are at least 3 device handlers for this, they are [referenced here](https:
 ## Known Issues
 
 - Installation of a new device may not register/find this DH properly. Setting to this handler manually does sync everything and work as intended.
+- Since Dimming triggers a Piston every second, Webcore seems to get out of order of the requests. This of course makes your dim go in weird directions. Unclear of resolution. 
 
 ## Button Definitions
 
