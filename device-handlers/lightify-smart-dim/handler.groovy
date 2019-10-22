@@ -37,11 +37,11 @@
 
 /*
 * Command reference 
-* on  'catchall: 0104 0006 01 01 0140 00 3A68 01 00 0000 01 00 '
-* off  'catchall: 0104 0006 01 01 0140 00 3A68 01 00 0000 00 00 '
+* on        'catchall: 0104 0006 01 01 0140 00 3A68 01 00 0000 01 00 '
+* off       'catchall: 0104 0006 01 01 0140 00 3A68 01 00 0000 00 00 '
 * held up   'catchall: 0104 0008 01 01 0140 00 3A68 01 00 0000 05 00 0032'
-* held down  'catchall: 0104 0008 01 01 0140 00 3A68 01 00 0000 01 00 0132'
-* released   'catchall: 0104 0008 01 01 0140 00 3A68 01 00 0000 03 00 '
+* held down 'catchall: 0104 0008 01 01 0140 00 3A68 01 00 0000 01 00 0132'
+* released  'catchall: 0104 0008 01 01 0140 00 3A68 01 00 0000 03 00 '
 */
 
 
@@ -92,7 +92,9 @@ def parse(String msgFromST) {
     } else if (msgFromST.startsWith("read")) {
         log.debug('read: ' + msgFromST)
         def descMap = zigbee.parseDescriptionAsMap(msgFromST)
-        if (descMap.clusterInt == 0x0001 && descMap.attrInt == 0x0020 && descMap.value != null) getBatteryResult(zigbee.convertHexToInt(descMap.value))
+        if (descMap.clusterInt == 0x0001 && descMap.attrInt == 0x0020 && descMap.value != null) {
+            getBatteryResult(zigbee.convertHexToInt(descMap.value))
+        }
     } else {
         log.error('unrecognized command:' + msgFromST)
     }
@@ -198,11 +200,9 @@ private handleButtonHeld(Map msg) {
             break
         case 7:
             log.info("Button Held Bind Response - 7!!!")
-            state.bounddimmer = true
             break 
         case 8:
             log.info("Button Held Bind Response - 8!!!")
-            state.bounddimmer = true
             break 
         default:
             log.error("Unhandled button held event: " + msg)
@@ -253,7 +253,7 @@ private Map getStatus() {
     battery: state.battery,
     value: state.value,
     level: state.level,
-    lastAction: state.lastAction,
+    lastAction: state.action,
     displayed: true,
     isStateChange: true,
     data: [buttonNumber: state.buttonNumber],
@@ -270,7 +270,6 @@ private reportState() {
     sendEvent(name: 'battery',         unit:"%",      type:"battery",   value: state.battery)
     sendEvent(name: 'level',           unit:"%",      type:"dimmer",    value: state.level)
     sendEvent(name: 'numberOfButtons', unit:"each",   type:"count",     value: 8)
-    sendEvent(name: "button", value: state.action, data: [buttonNumber: state.buttonNumber], displayed: false, isStateChange: true)
     log.info("Final Level: " + state.level)
     log.info("Final State: " + state.value)
 }
@@ -305,6 +304,7 @@ private toggle() {
         log.info('toggle on')
         if (state.level < 20) state.level = 20
     }
+    sendEvent(name: "button", value: state.action, data: [buttonNumber: state.buttonNumber], displayed: false, isStateChange: true)
 }
 
 /*
