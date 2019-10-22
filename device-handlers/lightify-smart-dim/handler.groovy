@@ -102,10 +102,27 @@ def parse(String msgFromST) {
     return getStatus()
 } 
 
+
+private getBatteryResult(rawValue) {
+    log.debug('Check Battery')
+    def volts = rawValue / 10
+    if (volts > 3.0 || volts == 0 || rawValue == 0xFF) {
+        state.battery = -1
+    } else {
+        def minVolts = 2.1
+        def maxVolts = 3.0
+        def pct = (volts - minVolts) / (maxVolts - minVolts)
+        state.battery = Math.min(100, (int)(pct * 100))
+    }
+}
+
 /* 
 * ST Message Handler
 */
 private handleMessage(String msgFromST) {
+    state.dimming = false
+    state.buttonNumber = null
+
     Map msg = zigbee.parseDescriptionAsMap(msgFromST)
     switch (Integer.parseInt(msg.clusterId)) {
         case 6: // button press
@@ -120,12 +137,10 @@ private handleMessage(String msgFromST) {
             break
         case 8021:
             log.info("Networking Bind Response received!!!")
-            state.buttonNumber = null
             state.boundnetwork = true
             break
         case 8034:
             log.info("Network managment Leave Response!!!")
-            state.buttonNumber = null
             state.boundnetwork = false
             break
         default:
@@ -145,16 +160,17 @@ private handleButtonPress(Map msg) {
     switch (msg.command) {
         case "00": // bottom press
             log.info('button bottom press')
-            if (state.value == "on") toggle()
+            toggle(2)
             break
         case "01": // top press
             log.info('button top press')
-            if (state.value == "off") toggle()
+            toggle(1)
             break
         case "03": // both pressed
             // UNUSED
             log.info('both buttons pressed')
             state.buttonNumber = 6
+            sendEventButton()
             break
         case "07": 
             log.info("Button Press Bind Response!!!")
@@ -173,11 +189,14 @@ private handleButtonPress(Map msg) {
 private handleButtonHeld(Map msg) {
     if (state.level == null) state.level = 100
     state.action = 'held'
-
+    
     switch (Integer.parseInt(msg.command)) {
         case 1:
             log.debug("button bottom held")
+            
             state.buttonNumber = 4
+            sendEventButton()
+
             state.lastHeld = "down"
             state.dimming = true
             state.brightnessOffset = -20
@@ -185,14 +204,17 @@ private handleButtonHeld(Map msg) {
             break
         case 3: // released 
             log.debug("RELEASED")
-            state.buttonNumber = 5
+
             state.action = "released"
-            state.dimming = false
-            return state
+            state.buttonNumber = 5
+            sendEventButton()
             break
         case 5:
-            state.buttonNumber = 3
             log.debug("button top held")
+            
+            state.buttonNumber = 3
+            sendEventButton()
+
             state.lastHeld = "up"
             state.dimming = true
             state.brightnessOffset = 20
@@ -208,40 +230,65 @@ private handleButtonHeld(Map msg) {
             log.error("Unhandled button held event: " + msg)
             break
     }
-return msg
+
 }
 
 void executeBrightnessAdjustmentUntilButtonReleased(){
     def level = state.level + state.brightnessOffset
-    if (state.dimming && level >= 0 && level <= 100) {
+    if (state.dimming) {
         setLevel(state.brightnessOffset)
-        runIn(1, executeBrightnessAdjustmentUntilButtonReleased)
-    }
+        if (level > 0 && level < 100) {
+            runIn(1, executeBrightnessAdjustmentUntilButtonReleased)
+        }
+    } 
 }
 
 private setLevel(int offset){
+    log.info("Setting Level")
     def level = state.level + offset
+
+    state.value="on"
     if (level > 100) {
         level = 100
-    } else if (level < 0) {
+    } else if (level <= 0) {
+        // toggle over level
         level = 0
+        toggle(2)
     }
+
     state.level = level
+    if (level > 0) reportState()
+}
+
+
+private uiToggle() {
+    def button = (state.value == "on") ? 2 : 1
+    toggle(button)
     reportState()
 }
 
-private getBatteryResult(rawValue) {
-    log.debug('Check Battery')
-    def volts = rawValue / 10
-    if (volts > 3.0 || volts == 0 || rawValue == 0xFF) {
-        state.battery = -1
+private toggle(int button) {
+    state.action = "pushed"
+    state.buttonNumber = button
+
+    if (button == 2) {
+        log.info('toggle off')
+        state.value="off"
     } else {
-        def minVolts = 2.1
-        def maxVolts = 3.0
-        def pct = (volts - minVolts) / (maxVolts - minVolts)
-        state.battery = Math.min(100, (int)(pct * 100))
+        log.info('toggle on')
+        state.value="on"
+
+        // level over toggle
+        if (state.level < 20) {
+            state.level = 0
+            setLevel(20)
+            return 
+        }
     }
+    sendEventButton()
 }
+
+
 
 
 /*
@@ -268,10 +315,17 @@ private Map getStatus() {
 private reportState() {
     sendEvent(name: 'state',           unit:'on/off', type:'state',     value: state.value)
     sendEvent(name: 'battery',         unit:"%",      type:"battery",   value: state.battery)
-    sendEvent(name: 'level',           unit:"%",      type:"dimmer",    value: state.level)
+    sendEvent(name: 'level',           unit:"%",      type:"dimmer",    value: state.level,     isStateChange: true)
     sendEvent(name: 'numberOfButtons', unit:"each",   type:"count",     value: 8)
     log.info("Final Level: " + state.level)
     log.info("Final State: " + state.value)
+}
+
+private sendEventButton() {
+    if (state.buttonNumber) {
+        log.info("Button: " + state.action + " Event Fired")
+        sendEvent(name: "button", value: state.action, data: [buttonNumber: state.buttonNumber], displayed: false, isStateChange: true)
+    }
 }
 
 /*
@@ -286,26 +340,6 @@ private fireCommands(List commands) {
     }
 }
 
-
-private uiToggle() {
-    toggle()
-    reportState()
-}
-
-private toggle() {
-    state.action = "pushed"
-    if (state.value == "on") {
-        state.buttonNumber = 2
-        state.value="off"
-        log.info('toggle off')
-    } else {
-        state.buttonNumber = 1 
-        state.value="on"
-        log.info('toggle on')
-        if (state.level < 20) state.level = 20
-    }
-    sendEvent(name: "button", value: state.action, data: [buttonNumber: state.buttonNumber], displayed: false, isStateChange: true)
-}
 
 /*
 * Refresh support. 
