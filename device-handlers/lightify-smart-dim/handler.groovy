@@ -253,6 +253,7 @@ private setLevel(int offset){
         level = 100
     } else if (level <= 0) {
         level = 0
+        state.value="off"
     }
 
     state.level = level
