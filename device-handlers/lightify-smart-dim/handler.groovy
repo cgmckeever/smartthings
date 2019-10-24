@@ -236,18 +236,19 @@ void executeBrightnessAdjustmentUntilButtonReleased(){
     state.executed = state.executed + 1
     if (state.dimming) {
         if (level >= 0 && level <= 100){
-            setLevel(state.brightnessOffset)
+            adjustLevel(state.brightnessOffset)
             runIn(1, executeBrightnessAdjustmentUntilButtonReleased)
-        } else if (state.executed == 1) {
-            setLevel(state.brightnessOffset)
+        } else {
+            adjustLevel(state.brightnessOffset)
         }
     }
 }
 
-private setLevel(int offset){
-    log.info("Setting Level")
+private adjustLevel(int offset){
+    log.info("Dimming...")
     def level = state.level + offset
 
+    log.info("Setting Level: " + level)
     state.value="on"
     if (level > 100) {
         level = 100
