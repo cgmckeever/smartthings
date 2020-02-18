@@ -122,7 +122,6 @@ private getBatteryResult(rawValue) {
 * ST Message Handler
 */
 private handleMessage(String msgFromST) {
-    state.dimming = false
     state.buttonNumber = null
 
     Map msg = zigbee.parseDescriptionAsMap(msgFromST)
@@ -187,7 +186,6 @@ private handleButtonPress(Map msg) {
 * Button Held Handler
 */
 private handleButtonHeld(Map msg) {
-    if (state.level == null) state.level = 100
     state.action = 'held'
     state.executed = 0
     
@@ -197,10 +195,7 @@ private handleButtonHeld(Map msg) {
             
             state.buttonNumber = 4
 
-            state.lastHeld = "down"
-            state.dimming = true
-            state.brightnessOffset = -20
-            executeBrightnessAdjustmentUntilButtonReleased()
+            executeUntilButtonReleased()
             break
         case 3: // released 
             log.debug("RELEASED")
@@ -213,10 +208,8 @@ private handleButtonHeld(Map msg) {
             
             state.buttonNumber = 3
 
-            state.lastHeld = "up"
-            state.dimming = true
             state.brightnessOffset = 20
-            executeBrightnessAdjustmentUntilButtonReleased()
+            executeUntilButtonReleased()
             break
         case 7:
             log.info("Button Held Bind Response - 7!!!")
@@ -231,36 +224,16 @@ private handleButtonHeld(Map msg) {
 
 }
 
-void executeBrightnessAdjustmentUntilButtonReleased(){
+void executeUntilButtonReleased(){
     def level = state.level + state.brightnessOffset
     state.executed = state.executed + 1
-    if (state.dimming) {
-        if (level >= 0 && level <= 100){
-            adjustLevel(state.brightnessOffset)
-            runIn(1, executeBrightnessAdjustmentUntilButtonReleased)
-        } else {
-            adjustLevel(state.brightnessOffset)
-        }
+    if (state.action == "held") {
+        log.info("Held...")
+        sendEventButton()
+        runIn(1, executeUntilButtonReleased)
     }
 }
 
-private adjustLevel(int offset){
-    log.info("Dimming...")
-    def level = state.level + offset
-
-    log.info("Setting Level: " + level)
-    state.value="on"
-    if (level > 100) {
-        level = 100
-    } else if (level <= 0) {
-        level = 0
-        state.value="off"
-    }
-
-    state.level = level
-    sendEventLevel()
-    
-}
 
 
 private uiToggle() {
@@ -271,33 +244,7 @@ private uiToggle() {
 private toggle(int button) {
     state.action = "pushed"
     state.buttonNumber = button
-    def sendLevel = false
-
-    // Double Tapping
-    if (button == 1) {
-        if (state.value == "on") {
-            state.level = 100
-            sendLevel = true
-        } else if (state.level < 20) {
-            state.level = 20
-            sendLevel = true
-        }
-    } else if (button == 2 && state.value == "off") {
-        state.value = "on"
-        state.level = 20
-        sendLevel = true
-    }
-
-    if (sendLevel) {
-        log.info("Level over Toggle")
-        state.level = state.level - 1
-        sendEventLevel()
-        state.level = state.level + 1
-        runIn(1, sendEventLevel)
-        return
-    }
-
-
+ 
     if (button == 2) {
         log.info('toggle off')
         state.value = "off"
@@ -309,7 +256,6 @@ private toggle(int button) {
     sendEventButton()
 
 }
-
 
 
 
@@ -349,10 +295,7 @@ private sendEventButton() {
     }
 }
 
-private sendEventLevel() {
-    log.info("Level: " + state.level + " Event Fired")
-    sendEvent(name: 'level',           unit:"%",      type:"dimmer",    value: state.level, isStateChange: true)
-}
+
 
 /*
 * fire commands into the hub
