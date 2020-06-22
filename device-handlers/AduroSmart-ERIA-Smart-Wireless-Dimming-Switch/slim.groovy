@@ -88,7 +88,7 @@ private Map parseAduroSmartButtonMessage(Map descMap){
     log.debug descMap.clusterInt
 
     if (descMap.clusterInt == zigbee.ONOFF_CLUSTER) {
-        log.debug "igbee.ONOFF_CLUSTER"
+        log.debug "zigbee.ONOFF_CLUSTER"
         if (descMap.command == "01") {
             buttonNumber = 1
         } else if (descMap.command == "00") {
