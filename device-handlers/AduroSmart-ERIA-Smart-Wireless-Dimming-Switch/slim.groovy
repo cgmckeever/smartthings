@@ -128,7 +128,6 @@ private Map parseAduroSmartButtonMessage(Map descMap){
 
 private getBatteryPercentageResult(rawValue) {
     log.debug 'Battery'
-    state.battery = 20
 }
 
 
@@ -142,7 +141,6 @@ private sendEventToChild(buttonNumber, event) {
 //
 def refresh() {
     log.debug "refresh"
-    state.battery = 24
     return zigbee.readAttribute(zigbee.POWER_CONFIGURATION_CLUSTER, batteryVoltage) +
             zigbee.readAttribute(zigbee.ONOFF_CLUSTER, switchType) + 
             zigbee.enrollResponse()
