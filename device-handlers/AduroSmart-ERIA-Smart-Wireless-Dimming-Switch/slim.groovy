@@ -215,7 +215,3 @@ private getModelNumberOfButtons() {[
 ]}
 
 private getSupportedButtonValues() { ["pushed"] }
-
-private isAduroSmartRemote(){
-    ((device.getDataValue("model") == "Adurolight_NCC") || (device.getDataValue("model") == "ADUROLIGHT_CSC"))
-}
