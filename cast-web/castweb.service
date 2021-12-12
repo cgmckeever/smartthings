@@ -1,0 +1,16 @@
+[Unit]
+Description=CastWeb
+After=docker.service
+Requires=docker.service
+
+[Service]
+Restart=always
+ExecStartPre=-/usr/bin/docker stop castweb
+ExecStartPre=-/usr/bin/docker rm castweb
+ExecStartPre=/home/pi/cast-web/castweb.service.sh
+ExecStart=/usr/bin/docker start -a castweb
+ExecStop=/usr/bin/docker stop castweb
+TimeoutStartSec=900
+
+[Install]
+WantedBy=multi-user.target
