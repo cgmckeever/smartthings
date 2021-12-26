@@ -1,0 +1,16 @@
+[Unit]
+Description=CastWeb
+After=docker.service
+Requires=docker.service
+
+[Service]
+Restart=always
+ExecStartPre=-/usr/bin/docker stop homebridge
+ExecStartPre=-/usr/bin/docker rm homebridge
+ExecStartPre=/home/pi/homebridge.sh
+ExecStart=/usr/bin/docker start -a homebridge
+ExecStop=/usr/bin/docker stop homebridge
+TimeoutStartSec=900
+
+[Install]
+WantedBy=multi-user.target 
