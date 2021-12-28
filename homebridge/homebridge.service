@@ -1,5 +1,5 @@
 [Unit]
-Description=CastWeb
+Description=Homebridge
 After=docker.service
 Requires=docker.service
 
