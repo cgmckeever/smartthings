@@ -2,7 +2,7 @@
 
 set -e
 
-docker run \
+docker run -d \
   --net=host \
   --name=homebridge \
   -v $(pwd)/homebridge:/homebridge \
