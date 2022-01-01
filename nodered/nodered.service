@@ -1,0 +1,16 @@
+[Unit]
+Description=NodeRed
+After=docker.service
+Requires=docker.service
+
+[Service]
+Restart=always
+ExecStartPre=-/usr/bin/docker stop nodered
+ExecStartPre=-/usr/bin/docker rm nodered
+ExecStartPre=/home/pi/nodered.sh
+ExecStart=/usr/bin/docker start -a nodered
+ExecStop=/usr/bin/docker stop nodred
+TimeoutStartSec=900
+
+[Install]
+WantedBy=multi-user.target 
