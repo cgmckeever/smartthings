@@ -6,7 +6,6 @@ backup_dir="/tmp/backup"
 backup_tar=$(date +"%Y%m%dT%H%M").tar.gz
 
 rm -rf $backup_dir
-mkdir -p $backup_dir
 mkdir -p $backup_dir/systemd
 
 cp /etc/systemd/system/arlo.service $backup_dir/systemd/
