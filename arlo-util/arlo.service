@@ -1,0 +1,16 @@
+[Unit]
+Description=ARlo
+After=docker.service
+Requires=docker.service
+
+[Service]
+Restart=always
+ExecStartPre=-/usr/bin/docker stop arlo
+ExecStartPre=-/usr/bin/docker rm arlo
+ExecStartPre=/home/pi/arlo/arlo.sh
+ExecStart=/usr/bin/docker start -a arlo
+ExecStop=/usr/bin/docker stop arlo
+TimeoutStartSec=900
+
+[Install]
+WantedBy=multi-user.target 
