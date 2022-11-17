@@ -1,4 +1,3 @@
-"Dockerfile" 14L, 378B                                                                                                                                                         1,1           All
 FROM python:3.8-slim-buster
 
 RUN pip install -I arlo==1.2.61 && \
